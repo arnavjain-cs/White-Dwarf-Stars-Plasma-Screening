@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plasma Screening Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030b14;--panel:#071525;--border:#1a3a5c;--blue:#00c8f0;--purple:#9f7aea;--red:#f05060;--gold:#f0c040;--text:#cce0f0;--muted:#4a7090;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;font-size:13px;min-height:100vh;}
+.wrap{max-width:1440px;margin:0 auto;padding:20px;}
+header{text-align:center;padding:28px 0 22px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+h1{font-family:'Orbitron',sans-serif;font-size:clamp(1.3rem,3vw,2.4rem);font-weight:900;letter-spacing:.08em;
+   background:linear-gradient(120deg,var(--blue) 0%,var(--purple) 50%,var(--red) 100%);
+   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;}
+.sub{color:var(--muted);font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;}
+.controls{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 22px;margin-bottom:18px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px 22px;align-items:end;}
+.ctrl{display:flex;flex-direction:column;gap:5px;}
+.clabel{font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);}
+.cval{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:700;color:var(--blue);min-height:20px;}
+input[type=range]{width:100%;height:3px;appearance:none;background:var(--border);border-radius:2px;cursor:pointer;outline:none;}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 5px rgba(0,200,240,.5);}
+.brow{display:flex;gap:9px;flex-wrap:wrap;}
+.btn{font-family:'Orbitron',sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;padding:8px 16px;border-radius:6px;border:none;cursor:pointer;transition:all .14s;}
+.btn-run{background:var(--blue);color:#030b14;}
+.btn-stop{background:transparent;color:var(--red);border:1px solid var(--red);}
+.btn-dl{background:transparent;color:var(--gold);border:1px solid var(--gold);}
+.btn:hover:not(:disabled){filter:brightness(1.2);transform:translateY(-1px);}
+.btn:disabled{opacity:.3;cursor:not-allowed;transform:none;}
+.sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:680px){.sim-grid{grid-template-columns:1fr;}}
+.sim-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.sim-head{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--border);}
+.sname{font-family:'Orbitron',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.12em;}
+.sname.yuk{color:var(--blue);}.sname.col{color:var(--purple);}
+.badge{font-size:.56rem;letter-spacing:.07em;text-transform:uppercase;padding:3px 7px;border-radius:4px;}
+.badge.yuk{background:rgba(0,200,240,.08);color:var(--blue);border:1px solid rgba(0,200,240,.2);}
+.badge.col{background:rgba(159,122,234,.08);color:var(--purple);border:1px solid rgba(159,122,234,.2);}
+canvas.main{display:block;width:100%;aspect-ratio:1;background:#020910;}
+.rdf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:680px){.rdf-grid{grid-template-columns:1fr;}}
+.rdf-panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px 14px;}
+.rdf-title{font-family:'Orbitron',sans-serif;font-size:.63rem;font-weight:700;letter-spacing:.1em;margin-bottom:3px;}
+.rdf-title.yuk{color:var(--blue);}.rdf-title.col{color:var(--purple);}
+.rdf-sub{font-size:.57rem;color:var(--muted);letter-spacing:.07em;margin-bottom:10px;line-height:1.6;}
+.rdf-meta{display:flex;gap:18px;margin-bottom:10px;}
+.rdf-stat{display:flex;flex-direction:column;gap:1px;}
+.rslab{font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+.rsval{font-family:'Orbitron',sans-serif;font-size:.75rem;color:var(--blue);}
+canvas.rdf{display:block;width:100%;height:210px;background:#020910;border-radius:4px;}
+.stats{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:13px 18px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;}
+.stat{display:flex;flex-direction:column;gap:2px;}
+.slabel{font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.sval{font-family:'Orbitron',sans-serif;font-size:.76rem;color:var(--blue);}
+.dot{width:7px;height:7px;border-radius:50%;background:#334;display:inline-block;margin-right:5px;}
+.dot.on{background:var(--blue);box-shadow:0 0 6px var(--blue);animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.sunit{font-size:.55rem;color:var(--muted);letter-spacing:.06em;display:block;margin-top:1px;}
+
+/* Info panels */
+.info-section{margin-top:16px;display:flex;flex-direction:column;gap:10px;}
+.info-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.info-summary{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;
+  list-style:none;font-family:'Orbitron',sans-serif;font-size:.68rem;font-weight:700;
+  letter-spacing:.1em;color:var(--text);user-select:none;}
+.info-summary::-webkit-details-marker{display:none;}
+.info-summary:hover{background:rgba(255,255,255,0.03);}
+.info-tag{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;flex-shrink:0;}
+.info-tag.yuk{background:rgba(0,200,240,.1);color:var(--blue);border:1px solid rgba(0,200,240,.25);}
+.info-tag.col{background:rgba(159,122,234,.1);color:var(--purple);border:1px solid rgba(159,122,234,.25);}
+.info-tag.edu{background:rgba(240,192,64,.1);color:var(--gold);border:1px solid rgba(240,192,64,.25);}
+.chevron{margin-left:auto;transition:transform .2s;font-size:.8rem;color:var(--muted);}
+details[open] .chevron{transform:rotate(180deg);}
+.info-body{padding:4px 20px 20px;border-top:1px solid var(--border);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+@media(max-width:700px){.two-col{grid-template-columns:1fr;}}
+.info-col{padding-top:16px;}
+.info-heading{font-family:'Orbitron',sans-serif;font-size:.62rem;font-weight:700;
+  letter-spacing:.1em;color:var(--blue);text-transform:uppercase;margin-bottom:6px;}
+.info-formula{font-family:'Space Mono',monospace;font-size:.8rem;color:var(--gold);
+  background:#0a1a2a;border-left:2px solid var(--gold);padding:6px 10px;border-radius:3px;
+  margin:6px 0 8px;letter-spacing:.04em;}
+.info-text{font-size:.72rem;color:rgba(200,224,240,.75);line-height:1.75;margin-bottom:6px;}
+.info-text em{color:var(--blue);font-style:normal;}
+.info-table{border-collapse:collapse;width:100%;margin:6px 0 10px;font-size:.68rem;}
+.info-table td{padding:4px 8px;border-bottom:1px solid rgba(26,58,92,.5);}
+.info-table td:first-child{color:var(--blue);font-family:'Orbitron',sans-serif;font-size:.6rem;font-weight:700;width:36px;}
+.info-table td:nth-child(2){color:var(--gold);font-family:'Space Mono',monospace;width:180px;}
+.info-table td:nth-child(3){color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PLASMA SCREENING SIMULATOR</h1>
+    <p class="sub">Debye-Hückel Theory &nbsp;·&nbsp; Molecular Dynamics &nbsp;·&nbsp; Real-Time Browser Simulation</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctrl">
+      <span class="clabel">Temperature</span>
+      <span class="cval" id="v-temp">0.10 eV</span>
+      <input type="range" id="s-temp" min="0.01" max="2.0" step="0.01" value="0.1">
+    </div>
+    <div class="ctrl">
+      <span class="clabel">Number Density (10^x m⁻³)</span>
+      <span class="cval" id="v-dens">10²¹·⁰ m⁻³</span>
+      <input type="range" id="s-dens" min="18" max="23" step="0.1" value="21">
+    </div>
+    <div class="ctrl">
+      <span class="clabel">Protons N</span>
+      <span class="cval" id="v-np">50</span>
+      <input type="range" id="s-np" min="10" max="120" step="5" value="50">
+    </div>
+    <div class="ctrl">
+      <span class="clabel">Electrons N (50/50 sim)</span>
+      <span class="cval" id="v-ne">50</span>
+      <input type="range" id="s-ne" min="10" max="120" step="5" value="50">
+    </div>
+    <div class="ctrl">
+      <span class="clabel">Speed</span>
+      <span class="cval" id="v-spd">1×</span>
+      <input type="range" id="s-spd" min="1" max="8" step="1" value="1">
+    </div>
+    <div class="ctrl">
+      <div class="brow">
+        <button class="btn btn-run"  id="btn-run">▶ Run</button>
+        <button class="btn btn-stop" id="btn-stop" disabled>■ Stop</button>
+        <button class="btn btn-dl"   id="btn-dl"   disabled>↓ Video</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sim-grid">
+    <div class="sim-panel">
+      <div class="sim-head">
+        <span class="sname yuk">Yukawa / Debye-Hückel</span>
+        <span class="badge yuk">Protons · Electrons implicit</span>
+      </div>
+      <canvas class="main" id="c-yuk"></canvas>
+    </div>
+    <div class="sim-panel">
+      <div class="sim-head">
+        <span class="sname col">Explicit Coulomb (50/50)</span>
+        <span class="badge col">Protons + Electrons · WCA cores</span>
+      </div>
+      <canvas class="main" id="c-col"></canvas>
+    </div>
+  </div>
+
+  <div class="rdf-grid">
+    <div class="rdf-panel">
+      <div class="rdf-title yuk">RDF — Yukawa / Debye-Hückel</div>
+      <div class="rdf-sub">
+        Proton–proton g(r) · g = 1 means random (unscreened) · deficit at small r shows Yukawa repulsion
+      </div>
+      <div class="rdf-meta">
+        <div class="rdf-stat"><span class="rslab">Peak g(r)</span><span class="rsval" id="yp-pk">—</span></div>
+        <div class="rdf-stat"><span class="rslab">Peak at r</span><span class="rsval" id="yp-r">—</span></div>
+        <div class="rdf-stat"><span class="rslab">Frames</span><span class="rsval" id="yp-n">0</span></div>
+      </div>
+      <canvas class="rdf" id="r-yuk"></canvas>
+    </div>
+    <div class="rdf-panel">
+      <div class="rdf-title col">RDF — Explicit Coulomb (50/50)</div>
+      <div class="rdf-sub">
+        Electron–proton g(r) · g &gt; 1 at small r shows Debye cloud forming around each proton
+      </div>
+      <div class="rdf-meta">
+        <div class="rdf-stat"><span class="rslab">Peak g(r)</span><span class="rsval" id="cp-pk">—</span></div>
+        <div class="rdf-stat"><span class="rslab">Peak at r</span><span class="rsval" id="cp-r">—</span></div>
+        <div class="rdf-stat"><span class="rslab">Frames</span><span class="rsval" id="cp-n">0</span></div>
+      </div>
+      <canvas class="rdf" id="r-col"></canvas>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="slabel">Status</span>
+      <span class="sval"><span class="dot" id="dot"></span><span id="s-status">Idle</span></span>
+    </div>
+    <div class="stat"><span class="slabel">Debye Length λ_D</span><span class="sval" id="s-ld">—</span><span class="sunit">[m]</span></div>
+    <div class="stat"><span class="slabel">Temperature</span><span class="sval" id="s-tk">—</span><span class="sunit">[K] / [eV]</span></div>
+    <div class="stat"><span class="slabel">Coupling Γ = A_norm / r_WS  (2D)</span><span class="sval" id="s-gm">—</span><span class="sunit">[dimensionless]</span></div>
+    <div class="stat"><span class="slabel">Yukawa A = e²/4πε₀k_BT·λ_D</span><span class="sval" id="s-an">—</span><span class="sunit">[dimensionless]</span></div>
+    <div class="stat"><span class="slabel">Time Unit τ = √(m_p·λ_D²/k_BT)</span><span class="sval" id="s-tau">—</span><span class="sunit">[ps]</span></div>
+    <div class="stat"><span class="slabel">Yukawa dt = 0.001 τ</span><span class="sval" id="s-dy">—</span><span class="sunit">[fs]</span></div>
+    <div class="stat"><span class="slabel">Coulomb dt = 0.0001 τ</span><span class="sval" id="s-dc">—</span><span class="sunit">[fs]</span></div>
+    <div class="stat"><span class="slabel">Box = 10 λ_D per side</span><span class="sval" id="s-bx">—</span><span class="sunit">[Å]</span></div>
+    <div class="stat"><span class="slabel">Frame</span><span class="sval" id="s-fr">0</span><span class="sunit"></span></div>
+  </div>
+
+  <!-- Γ warning banner — shown when simulation leaves valid regime -->
+  <div id="gamma-warn" style="display:none;background:rgba(240,80,60,0.12);border:1px solid rgba(240,80,60,0.4);
+    border-radius:8px;padding:11px 18px;margin-top:12px;font-size:.72rem;line-height:1.7;color:rgba(240,200,190,0.9);">
+    <span style="font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;color:#f05060;letter-spacing:.1em;">
+      ⚠ STRONGLY COUPLED REGIME (Γ &gt; 1)
+    </span><br>
+    At these conditions the coupling parameter Γ = <span id="warn-gamma">—</span>, meaning electrostatic energy dominates
+    over thermal energy. <strong>Debye-Hückel theory is no longer valid</strong> and both simulations leave their
+    physically accurate regime. The Coulomb sim in particular may become numerically unstable — the timestep has been
+    automatically reduced to compensate, but extreme parameters (Γ &gt; 5) will still produce erratic behaviour.
+    For physically meaningful results, keep Γ ≪ 1 by raising temperature or lowering density.
+  </div>
+
+  <!-- ── INFO SECTION ─────────────────────────────────────────── -->
+  <div class="info-section">
+
+    <details class="info-card" open>
+      <summary class="info-summary">
+        <span class="info-tag yuk">Yukawa</span>
+        How the Yukawa / Debye-Hückel simulation works
+        <span class="chevron">▾</span>
+      </summary>
+      <div class="info-body two-col">
+        <div class="info-col">
+          <div class="info-heading">Potential</div>
+          <div class="info-formula">V(r) = A · exp(−κr) / r</div>
+          <div class="info-text">This is the Debye-Hückel screened Coulomb potential. The exponential factor exp(−κr) causes the interaction to decay much faster than bare Coulomb (1/r), representing the shielding effect of the surrounding electron cloud.</div>
+          <div class="info-heading" style="margin-top:14px">Parameters</div>
+          <table class="info-table">
+            <tr><td>κ</td><td>= 1/λ_D</td><td>Screening wavenumber [λ_D⁻¹]</td></tr>
+            <tr><td>A</td><td>= e²/4πε₀k_BT·λ_D</td><td>Normalized Yukawa prefactor [dimensionless]</td></tr>
+            <tr><td>cutoff</td><td>= 3 λ_D</td><td>Pair cutoff — V(3λ_D) ≈ 0.05·V(0) [λ_D]</td></tr>
+          </table>
+        </div>
+        <div class="info-col">
+          <div class="info-heading">Integration</div>
+          <div class="info-text">Velocity Verlet algorithm with timestep dt = 0.001 τ. A velocity-rescaling NVT thermostat maintains constant temperature by rescaling all velocities every 20 steps to match the target k_BT.</div>
+          <div class="info-heading" style="margin-top:14px">Electrons</div>
+          <div class="info-text">Electrons are <em>implicit</em> — they do not appear as particles. Their entire effect is encoded in the screening parameter κ = 1/λ_D. This is exact within Debye-Hückel theory for weakly coupled plasmas (Γ ≪ 1). The analytical electron density around each proton is n_e(r)/n₀ = 1 + A·exp(−κr)/r, shown as the blue glow halo on screen.</div>
+          <div class="info-heading" style="margin-top:14px">Validity</div>
+          <div class="info-text">Valid for weakly coupled plasmas where Γ ≪ 1 — thermal energy dominates over electrostatic potential energy. Your current Γ is shown in the stats bar above.</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="info-card">
+      <summary class="info-summary">
+        <span class="info-tag col">Coulomb</span>
+        How the Explicit Coulomb (50/50) simulation works
+        <span class="chevron">▾</span>
+      </summary>
+      <div class="info-body two-col">
+        <div class="info-col">
+          <div class="info-heading">Pair Potentials</div>
+          <table class="info-table">
+            <tr><td>p–p</td><td>Coulomb repulsion + WCA core</td></tr>
+            <tr><td>e–p</td><td>Coulomb attraction + WCA core</td></tr>
+            <tr><td>e–e</td><td>Coulomb repulsion + WCA core</td></tr>
+          </table>
+          <div class="info-text" style="margin-top:10px">Bare Coulomb: V(r) = q_i·q_j / r where charges are ±q_eff = √A_norm.</div>
+          <div class="info-heading" style="margin-top:14px">WCA Core</div>
+          <div class="info-text">The Weeks-Chandler-Andersen potential V_WCA(r) = 4ε[(σ/r)¹²−(σ/r)⁶]+ε for r &lt; 2^(1/6)σ, else 0. This is purely repulsive — it mimics the quantum zero-point pressure and Pauli exclusion principle that prevents electrons from collapsing onto protons in a classical simulation. σ values: p-p = 0.30 λ_D, e-p = 0.05 λ_D, e-e = 0.04 λ_D.</div>
+        </div>
+        <div class="info-col">
+          <div class="info-heading">Mass Ratio</div>
+          <div class="info-text">Electron mass = m_p / 100 (reduced from physical 1/1836). The full ratio requires dt ≈ 1×10⁻⁶ τ — with 10,000 steps that simulates only 0.01 τ of real dynamics. At 1:100 a stable dt = 0.0001 τ gives 1 τ of meaningful dynamics. The Debye screening statistics are unchanged by this approximation.</div>
+          <div class="info-heading" style="margin-top:14px">Integration</div>
+          <div class="info-text">Velocity Verlet with dt = 0.0001 τ (10× smaller than Yukawa — needed for fast electrons). Separate NVT thermostats for protons and electrons because at the same temperature, electrons (lighter) have much higher velocities and require tighter coupling.</div>
+          <div class="info-heading" style="margin-top:14px">What you see</div>
+          <div class="info-text">Red dots = protons. Purple dots = electrons. Purple trails show recent electron paths. The Debye cloud forms organically — electrons cluster near protons due to Coulomb attraction, visible both in the particle positions and in the e–p RDF peak above g = 1.</div>
+        </div>
+      </div>
+    </details>
+
+    <details class="info-card">
+      <summary class="info-summary">
+        <span class="info-tag edu">Theory</span>
+        About plasma screening and Debye-Hückel theory
+        <span class="chevron">▾</span>
+      </summary>
+      <div class="info-body two-col">
+        <div class="info-col">
+          <div class="info-heading">What is plasma screening?</div>
+          <div class="info-text">In a plasma, free charges rearrange themselves to reduce the effective electric field of any given ion. A positive ion (proton) attracts nearby electrons, forming a negatively charged cloud that partially cancels the proton's field. Beyond a characteristic distance — the Debye length — the proton appears electrically neutral to other particles. This is called <em>Debye screening</em> or <em>electrostatic shielding</em>.</div>
+          <div class="info-heading" style="margin-top:14px">The Debye Length λ_D</div>
+          <div class="info-formula">λ_D = √(ε₀k_BT / n_e·e²)</div>
+          <div class="info-text">λ_D is the e-folding length of the screened potential — at r = λ_D, the Yukawa potential has decayed to 1/e ≈ 37% of its unscreened value. Higher density or lower temperature → shorter λ_D → stronger screening. The simulation box is always 10 λ_D per side so you see many screening lengths.</div>
+          <div class="info-heading" style="margin-top:14px">The Coupling Parameter Γ</div>
+          <div class="info-formula">Γ = e²/4πε₀k_BT·r_WS</div>
+          <div class="info-text">Γ is the ratio of electrostatic potential energy to thermal energy at the Wigner-Seitz radius r_WS = (3/4πn)^(1/3). Γ ≪ 1 → weakly coupled (thermal energy dominates, Debye-Hückel valid). Γ ≫ 1 → strongly coupled (potential energy dominates, liquid/crystal-like order). Your plasma conditions are shown in the stats bar.</div>
+        </div>
+        <div class="info-col">
+          <div class="info-heading">Debye-Hückel Theory</div>
+          <div class="info-text">Derived by Peter Debye and Erich Hückel in 1923, the theory solves the linearized Poisson-Boltzmann equation to find the electrostatic potential around a test charge in a plasma:</div>
+          <div class="info-formula">φ(r) = (Ze/4πε₀) · exp(−r/λ_D) / r</div>
+          <div class="info-text">The electron density around a proton follows:</div>
+          <div class="info-formula">n_e(r)/n₀ = 1 + A · exp(−κr) / r</div>
+          <div class="info-text">This is exact in the weakly coupled limit (Γ → 0). The Yukawa simulation directly implements this screened potential for the proton-proton interaction.</div>
+          <div class="info-heading" style="margin-top:14px">Radial Distribution Function g(r)</div>
+          <div class="info-text">g(r) measures the probability of finding a particle at distance r from a reference particle, relative to a purely random (ideal gas) distribution. g = 1 everywhere means no correlations — a perfect gas. In a screened plasma: the Yukawa RDF shows g &lt; 1 at small r (protons avoid each other), while the Coulomb e–p RDF shows g &gt; 1 at small r (electrons cluster near protons — the Debye cloud).</div>
+          <div class="info-heading" style="margin-top:14px">Applications</div>
+          <div class="info-text">Plasma screening is fundamental to stellar interiors, fusion plasmas, semiconductor doping, electrolyte chemistry, and colloid science. The Debye length in the solar core is ~10⁻¹¹ m; in a semiconductor it is ~10⁻⁸ m; in seawater ~1 nm.</div>
+        </div>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  PLASMA SCREENING SIMULATOR — JS MD Engine
+//  Two models: Yukawa (Debye-Hückel) and Explicit Coulomb (50/50)
+//  2D normalized units: length=λ_D, energy=k_BT, mass=m_p, time=τ
+// ═══════════════════════════════════════════════════════════════
+
+const EC=1.602176634e-19, EPS0=8.8541878128e-12, MP=1.67262192e-27, KB=1.380649e-23;
+
+function gauss(){
+  let u,v;do{u=Math.random();}while(!u);do{v=Math.random();}while(!v);
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function plasmaParams(T_eV,n_m3){
+  const T_K=T_eV*11604.52;
+  const lD=Math.sqrt(EPS0*KB*T_K/(n_m3*EC*EC));
+  const A_norm=(EC*EC/(4*Math.PI*EPS0))/(KB*T_K*lD);
+  const tau=Math.sqrt(MP*lD*lD/(KB*T_K));
+  return{T_K,lD,A_norm,tau};
+}
+
+// ── YUKAWA SIMULATION ─────────────────────────────────────────
+// V(r) = A·exp(-κr)/r  where κ=1 (normalized to λ_D)
+// F(r) = A·(κ + 1/r)·exp(-κr)/r  (repulsive proton-proton)
+// Electrons are implicit — fully encoded in κ via Debye-Hückel theory
+class YukSim{
+  constructor(N,A,kappa,box,cut,dt){
+    Object.assign(this,{N,A,kappa,box,cut,dt});
+    this.x=new Float64Array(N);this.y=new Float64Array(N);
+    this.vx=new Float64Array(N);this.vy=new Float64Array(N);
+    this.fx=new Float64Array(N);this.fy=new Float64Array(N);
+    this._place();this._thermo();this._forces();
+  }
+  _place(){
+    const cols=Math.ceil(Math.sqrt(this.N)),sp=this.box/cols;
+    for(let i=0;i<this.N;i++){
+      this.x[i]=((i%cols)+.5)*sp+(Math.random()-.5)*.3;
+      this.y[i]=(Math.floor(i/cols)+.5)*sp+(Math.random()-.5)*.3;
+      this.x[i]=((this.x[i]%this.box)+this.box)%this.box;
+      this.y[i]=((this.y[i]%this.box)+this.box)%this.box;
+      this.vx[i]=gauss();this.vy[i]=gauss();
+    }
+  }
+  _thermo(){
+    let ke=0;for(let i=0;i<this.N;i++)ke+=this.vx[i]**2+this.vy[i]**2;
+    const T=ke*.5/this.N;if(T>0){const s=Math.sqrt(1/T);for(let i=0;i<this.N;i++){this.vx[i]*=s;this.vy[i]*=s;}}
+  }
+  _forces(){
+    const{N,x,y,fx,fy,A,kappa,cut,box}=this;fx.fill(0);fy.fill(0);
+    const cut2=cut*cut,half=box*.5;
+    for(let i=0;i<N-1;i++){
+      for(let j=i+1;j<N;j++){
+        let dx=x[i]-x[j],dy=y[i]-y[j];
+        if(dx>half)dx-=box;if(dx<-half)dx+=box;
+        if(dy>half)dy-=box;if(dy<-half)dy+=box;
+        const r2=dx*dx+dy*dy;
+        if(r2<cut*cut&&r2>1e-6){
+          const r=Math.sqrt(r2),F=A*(kappa+1/r)*Math.exp(-kappa*r)/r;
+          const Fx=F*dx/r,Fy=F*dy/r;
+          fx[i]+=Fx;fy[i]+=Fy;fx[j]-=Fx;fy[j]-=Fy;
+        }
+      }
+    }
+  }
+  step(n){
+    for(let s=0;s<n;s++){
+      const{N,x,y,vx,vy,fx,fy,dt,box}=this,h=dt*.5;
+      for(let i=0;i<N;i++){
+        vx[i]+=fx[i]*h;vy[i]+=fy[i]*h;
+        x[i]+=vx[i]*dt;y[i]+=vy[i]*dt;
+        x[i]=((x[i]%box)+box)%box;y[i]=((y[i]%box)+box)%box;
+      }
+      this._forces();
+      for(let i=0;i<N;i++){vx[i]+=fx[i]*h;vy[i]+=fy[i]*h;}
+      if(s%20===0)this._thermo();
+    }
+  }
+}
+
+// ── COULOMB 50/50 SIMULATION ──────────────────────────────────
+// Bare Coulomb between all pairs + WCA repulsive cores:
+//   p-p WCA: prevents proton-proton hard overlap
+//   e-p WCA: prevents classical electron-proton collapse (mimics quantum zero-point pressure)
+//   e-e WCA: prevents electron-electron overlap, makes e-e repulsion clearly visible
+// Mass ratio 1:100 (1:1836 requires dt~1e-6τ — impractical in browser)
+class ColSim{
+  constructor(Np,Ne,q,box,cut,dt){
+    this.Np=Np;this.Ne=Ne;this.N=Np+Ne;
+    Object.assign(this,{q,box,cut,dt});
+    this.meR=100;
+    this.sigPP=0.30;this.sigEP=0.05;this.sigEE=0.04;this.epsW=5.0;
+    this.lcPP=Math.pow(2,1/6)*this.sigPP;
+    this.lcEP=Math.pow(2,1/6)*this.sigEP;
+    this.lcEE=Math.pow(2,1/6)*this.sigEE;
+    this.x=new Float64Array(this.N);this.y=new Float64Array(this.N);
+    this.vx=new Float64Array(this.N);this.vy=new Float64Array(this.N);
+    this.fx=new Float64Array(this.N);this.fy=new Float64Array(this.N);
+    this.mass=new Float64Array(this.N);this.chg=new Float64Array(this.N);
+    for(let i=0;i<Np;i++){this.mass[i]=1.0;this.chg[i]=+q;}
+    for(let i=Np;i<this.N;i++){this.mass[i]=1/this.meR;this.chg[i]=-q;}
+    this._place();this._thermo();this._forces();
+  }
+  _place(){
+    const cols=Math.ceil(Math.sqrt(this.N)),sp=this.box/cols*.9,off=this.box*.05;
+    for(let i=0;i<this.N;i++){
+      this.x[i]=off+(i%cols)*sp+(Math.random()-.5)*.15;
+      this.y[i]=off+Math.floor(i/cols)*sp+(Math.random()-.5)*.15;
+      this.x[i]=((this.x[i]%this.box)+this.box)%this.box;
+      this.y[i]=((this.y[i]%this.box)+this.box)%this.box;
+      const vs=Math.sqrt(1/this.mass[i]);
+      this.vx[i]=gauss()*vs;this.vy[i]=gauss()*vs;
+    }
+  }
+  _thermo(){
+    const{Np,N,vx,vy,mass}=this;
+    // Velocity rescaling thermostat — target T = 1 (normalized)
+    // In 2D: KE per particle = T, so total KE_target = Np * T = Np
+    // kp = 0.5*sum(m*v²) = total proton KE → scale factor s = sqrt(Np/kp)
+    let kp=0;for(let i=0;i<Np;i++)kp+=mass[i]*(vx[i]**2+vy[i]**2);
+    kp*=.5;if(kp>0){const s=Math.sqrt(Np/kp);for(let i=0;i<Np;i++){vx[i]*=s;vy[i]*=s;}}
+    let ke=0;const Ne=N-Np;for(let i=Np;i<N;i++)ke+=mass[i]*(vx[i]**2+vy[i]**2);
+    ke*=.5;if(ke>0){const s=Math.sqrt(Ne/ke);for(let i=Np;i<N;i++){vx[i]*=s;vy[i]*=s;}}
+  }
+  _wca(r2,sig,eps){
+    const s2=sig*sig/r2,s6=s2*s2*s2,s12=s6*s6;return 24*eps*(2*s12-s6)/r2;
+  }
+  _forces(){
+    const{N,Np,x,y,fx,fy,chg,cut,box,sigPP,sigEP,sigEE,epsW,lcPP,lcEP,lcEE}=this;
+    fx.fill(0);fy.fill(0);
+    const cut2=cut*cut,half=box*.5;
+    for(let i=0;i<N-1;i++){
+      const iP=i<Np;
+      for(let j=i+1;j<N;j++){
+        const jP=j<Np;
+        let dx=x[i]-x[j],dy=y[i]-y[j];
+        if(dx>half)dx-=box;if(dx<-half)dx+=box;
+        if(dy>half)dy-=box;if(dy<-half)dy+=box;
+        const r2=dx*dx+dy*dy;if(r2<1e-8)continue;
+        const r=Math.sqrt(r2);
+        let Fx=0,Fy=0;
+        // Coulomb (all pairs within cutoff)
+        if(r2<cut2){const Fc=chg[i]*chg[j]/r2;Fx+=Fc*dx/r;Fy+=Fc*dy/r;}
+        // WCA p-p: prevents proton hard overlap
+        if(iP&&jP&&r<lcPP){const fw=this._wca(r2,sigPP,epsW);Fx+=fw*dx;Fy+=fw*dy;}
+        // WCA e-p: prevents classical collapse, mimics quantum zero-point pressure
+        if(iP!==jP&&r<lcEP){const fw=this._wca(r2,sigEP,epsW);Fx+=fw*dx;Fy+=fw*dy;}
+        // WCA e-e: prevents electron overlap, makes e-e Coulomb repulsion clearly visible
+        if(!iP&&!jP&&r<lcEE){const fw=this._wca(r2,sigEE,epsW);Fx+=fw*dx;Fy+=fw*dy;}
+        fx[i]+=Fx;fy[i]+=Fy;fx[j]-=Fx;fy[j]-=Fy;
+      }
+    }
+  }
+  step(n){
+    for(let s=0;s<n;s++){
+      const{N,x,y,vx,vy,fx,fy,mass,dt,box}=this,h=dt*.5;
+      for(let i=0;i<N;i++){
+        const im=1/mass[i];vx[i]+=fx[i]*im*h;vy[i]+=fy[i]*im*h;
+        x[i]+=vx[i]*dt;y[i]+=vy[i]*dt;
+        x[i]=((x[i]%box)+box)%box;y[i]=((y[i]%box)+box)%box;
+      }
+      this._forces();
+      for(let i=0;i<N;i++){vx[i]+=fx[i]/mass[i]*h;vy[i]+=fy[i]/mass[i]*h;}
+      if(s%20===0)this._thermo();
+    }
+  }
+}
+
+// ── RDF ACCUMULATOR ───────────────────────────────────────────
+class RDF{
+  constructor(nbins,rmax,box,mode){
+    this.nbins=nbins;this.rmax=rmax;this.box=box;this.mode=mode;
+    this.hist=new Float64Array(nbins);this.cnt=0;
+    this.rc=new Float64Array(nbins);
+    for(let b=0;b<nbins;b++)this.rc[b]=rmax*(b+.5)/nbins;
+  }
+  acc(sim){
+    const{nbins,rmax,hist,box}=this;const dr=rmax/nbins,half=box*.5;
+    let i0,i1,j0,j1;
+    if(this.mode==='pp'){i0=0;i1=sim.Np||sim.N;j0=0;j1=sim.Np||sim.N;}
+    else{i0=sim.Np;i1=sim.N;j0=0;j1=sim.Np;}
+    for(let i=i0;i<i1;i++){
+      for(let j=j0;j<j1;j++){
+        if(this.mode==='pp'&&j<=i)continue;
+        let dx=sim.x[i]-sim.x[j],dy=sim.y[i]-sim.y[j];
+        if(dx>half)dx-=box;if(dx<-half)dx+=box;
+        if(dy>half)dy-=box;if(dy<-half)dy+=box;
+        const r=Math.sqrt(dx*dx+dy*dy);
+        if(r>.02&&r<rmax){const b=Math.floor(r/dr);if(b<nbins)hist[b]++;}
+      }
+    }
+    this.cnt++;
+  }
+  gr(N,box){
+    const{nbins,rmax,hist,cnt}=this;const dr=rmax/nbins,dens=N/(box*box);
+    const g=new Float64Array(nbins);
+    for(let b=0;b<nbins;b++){
+      const r=(b+.5)*dr,area=2*Math.PI*r*dr,exp=dens*area*N*cnt;
+      g[b]=exp>0?hist[b]/exp:0;
+    }
+    return g;
+  }
+}
+
+// ── RENDER: SIMULATION CANVAS ─────────────────────────────────
+function renderYuk(cv,sim,fr){
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,sc=W/sim.box;
+  ctx.fillStyle='#020910';ctx.fillRect(0,0,W,H);
+  const hr=Math.min(1.3*sc,75);
+  for(let i=0;i<sim.N;i++){
+    const px=sim.x[i]*sc,py=sim.y[i]*sc;
+    const g=ctx.createRadialGradient(px,py,0,px,py,hr);
+    g.addColorStop(0,'rgba(0,200,240,0.12)');g.addColorStop(.4,'rgba(0,200,240,0.04)');g.addColorStop(1,'rgba(0,200,240,0.00)');
+    ctx.beginPath();ctx.arc(px,py,hr,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+  }
+  ctx.shadowColor='#f05060';ctx.shadowBlur=10;
+  for(let i=0;i<sim.N;i++){ctx.beginPath();ctx.arc(sim.x[i]*sc,sim.y[i]*sc,5,0,Math.PI*2);ctx.fillStyle='#f05060';ctx.fill();}
+  ctx.shadowBlur=0;ctx.fillStyle='rgba(0,200,240,.4)';ctx.font='10px Space Mono,monospace';
+  ctx.fillText(`${sim.N} protons · step ${fr}`,8,18);
+}
+
+function renderCol(cv,sim,fr){
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,sc=W/sim.box;
+  ctx.fillStyle='#020910';ctx.fillRect(0,0,W,H);
+
+  // ── 1. Protons (drawn first — underneath everything) ──────────
+  ctx.shadowColor='#f05060';ctx.shadowBlur=12;
+  for(let i=0;i<sim.Np;i++){
+    ctx.beginPath();ctx.arc(sim.x[i]*sc,sim.y[i]*sc,6,0,Math.PI*2);
+    ctx.fillStyle='#f05060';ctx.fill();
+  }
+  ctx.shadowBlur=0;
+
+  // ── 2. Electron trails (fading path showing orbit) ────────────
+  // Skip segments where electron crossed a periodic boundary — those
+  // would draw a streak across the entire canvas (the visual bug fix).
+  const halfBox=sim.box*0.5;
+  for(let i=0;i<eTrails.length;i++){
+    const trail=eTrails[i];if(trail.length<2)continue;
+    for(let t=1;t<trail.length;t++){
+      const dx=Math.abs(trail[t].x-trail[t-1].x);
+      const dy=Math.abs(trail[t].y-trail[t-1].y);
+      if(dx>halfBox||dy>halfBox)continue;  // boundary wrap — skip this segment
+      const alpha=(t/trail.length)*0.55;
+      const width=0.5+(t/trail.length)*1.2;
+      ctx.beginPath();
+      ctx.moveTo(trail[t-1].x*sc,trail[t-1].y*sc);
+      ctx.lineTo(trail[t].x*sc,trail[t].y*sc);
+      ctx.strokeStyle=`rgba(179,157,219,${alpha.toFixed(2)})`;
+      ctx.lineWidth=width;ctx.stroke();
+    }
+  }
+
+  // ── 3. Electrons (drawn last — always on top of protons) ──────
+  ctx.shadowColor='#9f7aea';ctx.shadowBlur=8;
+  for(let i=sim.Np;i<sim.N;i++){
+    ctx.beginPath();ctx.arc(sim.x[i]*sc,sim.y[i]*sc,3,0,Math.PI*2);
+    ctx.fillStyle='#d4c4f0';ctx.fill();  // slightly brighter so they pop
+  }
+  ctx.shadowBlur=0;
+
+  ctx.fillStyle='rgba(179,157,219,.5)';ctx.font='10px Space Mono,monospace';
+  ctx.fillText(`${sim.Np}p + ${sim.Ne}e · step ${fr}`,8,18);
+}
+
+// ── RENDER: RDF CHART ─────────────────────────────────────────
+// Fully labeled: x-axis r(λ_D), y-axis g(r), gridlines, tick values,
+// g=1 reference line, shaded excess/deficit regions, legend
+function renderRDF(cv,gr,rc,rmax,col,mode){
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.fillStyle='#020910';ctx.fillRect(0,0,W,H);
+  if(!gr||gr.length===0){
+    ctx.fillStyle=col+'66';ctx.font='11px Space Mono,monospace';ctx.textAlign='center';
+    ctx.fillText('Accumulating data — please wait…',W/2,H/2);ctx.textAlign='left';return;
+  }
+  const pl=52,pr=18,pt=18,pb=38,pw=W-pl-pr,ph=H-pt-pb;
+  const maxG=Math.max(2.5,...Array.from(gr).filter(v=>isFinite(v)&&v<50));
+  const toX=r=>pl+(r/rmax)*pw;
+  const toY=g=>pt+ph*(1-Math.min(Math.max(g,0),maxG)/maxG);
+
+  // Subtle grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=.6;ctx.setLineDash([2,4]);
+  const nY=5;
+  for(let t=0;t<=nY;t++){const y=toY(maxG*t/nY);ctx.beginPath();ctx.moveTo(pl,y);ctx.lineTo(W-pr,y);ctx.stroke();}
+  const nX=6;
+  for(let t=0;t<=nX;t++){const x=toX(rmax*t/nX);ctx.beginPath();ctx.moveTo(x,pt);ctx.lineTo(x,pt+ph);ctx.stroke();}
+  ctx.setLineDash([]);
+
+  // g=1 reference (dashed white)
+  const y1=toY(1);
+  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(pl,y1);ctx.lineTo(W-pr,y1);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,255,255,0.28)';ctx.font='8px Space Mono,monospace';ctx.textAlign='right';
+  ctx.fillText('g=1',W-pr-2,y1-3);ctx.textAlign='left';
+
+  // Shaded fill — split above/below g=1
+  for(let b=0;b<gr.length-1;b++){
+    const x0=toX(rc[b]),x1=toX(rc[b+1]);
+    const g0=Math.min(gr[b],maxG),g1=Math.min(gr[b+1],maxG);
+    const y0a=toY(g0),y1a=toY(g1);
+    ctx.beginPath();ctx.moveTo(x0,y1);ctx.lineTo(x0,y0a);ctx.lineTo(x1,y1a);ctx.lineTo(x1,y1);ctx.closePath();
+    ctx.fillStyle=(g0+g1)*.5>1?col+'28':'#f0506028';ctx.fill();
+  }
+
+  // Main curve
+  ctx.beginPath();
+  for(let b=0;b<gr.length;b++){b===0?ctx.moveTo(toX(rc[b]),toY(Math.min(gr[b],maxG))):ctx.lineTo(toX(rc[b]),toY(Math.min(gr[b],maxG)));}
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pl,pt);ctx.lineTo(pl,pt+ph);ctx.lineTo(W-pr,pt+ph);ctx.stroke();
+
+  // Y tick labels
+  ctx.fillStyle='rgba(120,170,200,0.8)';ctx.font='9px Space Mono,monospace';ctx.textAlign='right';
+  for(let t=0;t<=nY;t++){
+    const gv=maxG*t/nY,y=toY(gv);
+    ctx.fillText(gv.toFixed(1),pl-5,y+3);
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=.5;
+    ctx.beginPath();ctx.moveTo(pl,y);ctx.lineTo(pl-3,y);ctx.stroke();
+  }
+
+  // X tick labels
+  ctx.textAlign='center';ctx.fillStyle='rgba(120,170,200,0.8)';
+  for(let t=0;t<=nX;t++){
+    const rv=rmax*t/nX,x=toX(rv);
+    ctx.fillText(rv.toFixed(1),x,pt+ph+11);
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=.5;
+    ctx.beginPath();ctx.moveTo(x,pt+ph);ctx.lineTo(x,pt+ph+3);ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle='rgba(100,155,195,0.6)';ctx.font='9px Space Mono,monospace';ctx.textAlign='center';
+  ctx.fillText('r  (λ_D)',pl+pw/2,H-5);
+  ctx.save();ctx.translate(11,pt+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('g(r)',0,0);ctx.restore();
+
+  // Legend
+  ctx.textAlign='left';ctx.font='8px Space Mono,monospace';
+  ctx.fillStyle=col+'cc';
+  ctx.fillText(mode==='pp'?'● proton–proton':'● electron–proton',pl+4,pt+13);
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────
+const cYuk=document.getElementById('c-yuk'),rYukC=document.getElementById('r-yuk');
+const cCol=document.getElementById('c-col'),rColC=document.getElementById('r-col');
+let yukSim=null,colSim=null,yukRDF=null,colRDF=null;
+let running=false,raf=null,frame=0,sps=1;
+// Electron trail buffer — stores last TRAIL_LEN positions per electron
+const TRAIL_LEN=20;
+let eTrails=[];  // eTrails[i] = [{x,y}, ...] for electron index i (local, 0-based)
+
+function resize(){
+  [cYuk,cCol].forEach(c=>{const s=c.clientWidth;if(s>0){c.width=s;c.height=s;}});
+  [rYukC,rColC].forEach(c=>{const w=c.clientWidth;if(w>0){c.width=w;c.height=210;}});
+}
+resize();window.addEventListener('resize',resize);
+
+const G=id=>document.getElementById(id),S=(id,v)=>G(id).textContent=v;
+
+G('s-temp').addEventListener('input',()=>S('v-temp',parseFloat(G('s-temp').value).toFixed(2)+' eV'));
+G('s-dens').addEventListener('input',()=>{const e=parseFloat(G('s-dens').value);S('v-dens',`10^${e.toFixed(1)} m⁻³`);});
+G('s-np').addEventListener('input',()=>S('v-np',Math.round(G('s-np').value)));
+G('s-ne').addEventListener('input',()=>S('v-ne',Math.round(G('s-ne').value)));
+G('s-spd').addEventListener('input',()=>{sps=Math.round(G('s-spd').value);S('v-spd',sps+'×');});
+
+function initSims(){
+  const T_eV=parseFloat(G('s-temp').value),n_m3=Math.pow(10,parseFloat(G('s-dens').value));
+  const Np=Math.round(G('s-np').value),Ne=Math.round(G('s-ne').value);
+  const{lD,A_norm,tau,T_K}=plasmaParams(T_eV,n_m3);
+  const q=Math.sqrt(A_norm),BOX=10,CY=3,CC=4;
+
+  // ── Adaptive timestep ──────────────────────────────────────────
+  // At large A_norm (strong forces), fixed dt causes instability.
+  // Scale dt down proportionally so max displacement per step stays safe.
+  // Base: DY=0.001τ, DC=0.0001τ at A_norm=1. Scale as 1/max(1,sqrt(A_norm)).
+  const dtScale=1.0/Math.max(1.0,Math.sqrt(A_norm/2.0));
+  const DY=Math.min(0.001,0.001*dtScale);   // Yukawa dt [τ]
+  const DC=Math.min(0.0001,0.0001*dtScale); // Coulomb dt [τ]
+
+  yukSim=new YukSim(Np,A_norm,1.0,BOX,CY,DY);
+  colSim=new ColSim(Np,Ne,q,BOX,CC,DC);
+  yukRDF=new RDF(60,CY*.9,BOX,'pp');colRDF=new RDF(60,CC*.9,BOX,'ep');
+  eTrails=Array.from({length:Ne},()=>[]);
+  frame=0;
+
+  const rWS=1.0/Math.sqrt(Math.PI*(Np/(BOX*BOX)));
+  const Gamma=A_norm/rWS;
+  const lD_A=lD*1e10;
+
+  // ── Γ warning ──────────────────────────────────────────────────
+  const warn=G('gamma-warn');
+  if(Gamma>1){
+    warn.style.display='block';
+    S('warn-gamma',Gamma.toFixed(2));
+  } else {
+    warn.style.display='none';
+  }
+
+  S('s-ld', lD.toExponential(3)+' m  =  '+lD_A.toFixed(2)+' Å');
+  S('s-tk', T_K.toFixed(1)+' K  =  '+T_eV.toFixed(2)+' eV');
+  S('s-gm', Gamma.toFixed(4)+'  '+(Gamma<1?'✓ weakly coupled':'⚠ strongly coupled'));
+  S('s-an', A_norm.toFixed(4));
+  S('s-tau',(tau*1e12).toFixed(4)+' ps');
+  S('s-dy', (DY*tau*1e15).toFixed(3)+' fs  (dt='+DY.toExponential(2)+'τ)');
+  S('s-dc', (DC*tau*1e15).toFixed(4)+' fs  (dt='+DC.toExponential(2)+'τ)');
+  S('s-bx', (BOX*lD_A).toFixed(1)+' Å  =  '+BOX+' λ_D');
+}
+
+function tick(){
+  if(!running)return;
+  yukSim.step(sps);colSim.step(sps*2);frame+=sps;
+  if(frame%4===0){yukRDF.acc(yukSim);colRDF.acc(colSim);}
+  // Update electron trail buffer — record current position of each electron
+  for(let i=0;i<colSim.Ne;i++){
+    const ei=colSim.Np+i;  // electron index in sim arrays
+    eTrails[i].push({x:colSim.x[ei],y:colSim.y[ei]});
+    if(eTrails[i].length>TRAIL_LEN) eTrails[i].shift();
+  }
+  resize();
+  renderYuk(cYuk,yukSim,frame);renderCol(cCol,colSim,frame);
+  const ygr=yukRDF.cnt>0?yukRDF.gr(yukSim.N,yukSim.box):null;
+  const cgr=colRDF.cnt>0?colRDF.gr(colSim.Np,colSim.box):null;
+  renderRDF(rYukC,ygr,yukRDF.rc,yukRDF.rmax,'#00c8f0','pp');
+  renderRDF(rColC,cgr,colRDF.rc,colRDF.rmax,'#9f7aea','ep');
+  if(ygr){
+    const pi=Array.from(ygr).reduce((mx,v,i)=>v>mx.v?{v,i}:mx,{v:-1,i:0});
+    S('yp-pk',ygr[pi.i].toFixed(3));S('yp-r',yukRDF.rc[pi.i].toFixed(3)+' λ_D');S('yp-n',yukRDF.cnt);
+  }
+  if(cgr){
+    const pi=Array.from(cgr).reduce((mx,v,i)=>v>mx.v?{v,i}:mx,{v:-1,i:0});
+    S('cp-pk',cgr[pi.i].toFixed(3));S('cp-r',colRDF.rc[pi.i].toFixed(3)+' λ_D');S('cp-n',colRDF.cnt);
+  }
+  S('s-fr',frame);
+  raf=requestAnimationFrame(tick);
+}
+
+G('btn-run').addEventListener('click',()=>{
+  if(running)return;initSims();running=true;
+  G('dot').classList.add('on');S('s-status','Running');
+  G('btn-run').disabled=true;G('btn-stop').disabled=false;G('btn-dl').disabled=false;tick();
+});
+G('btn-stop').addEventListener('click',()=>{
+  running=false;cancelAnimationFrame(raf);
+  G('dot').classList.remove('on');S('s-status','Stopped');
+  G('btn-run').disabled=false;G('btn-stop').disabled=true;
+});
+
+// ── VIDEO DOWNLOAD ─────────────────────────────────────────────
+// Detects QuickTime-compatible MP4 (Safari/macOS) first, falls back to WebM
+G('btn-dl').addEventListener('click',()=>{
+  if(!running)return;
+  const btn=G('btn-dl');btn.textContent='● Recording…';btn.disabled=true;
+
+  // Format priority: MP4 for QuickTime, WebM as fallback
+  const candidates=[
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm'
+  ];
+  let mimeType='video/webm';
+  for(const m of candidates){
+    try{if(MediaRecorder.isTypeSupported(m)){mimeType=m;break;}}catch{}
+  }
+  const ext=mimeType.startsWith('video/mp4')?'mp4':'webm';
+
+  const W=cYuk.width,H=cYuk.height,RH=rYukC.height;
+  const gap=8,comp=document.createElement('canvas');
+  comp.width=W*2+gap;comp.height=H+gap*2+RH+16;
+  const cc=comp.getContext('2d');
+
+  const rec=new MediaRecorder(comp.captureStream(30),{mimeType});
+  const chunks=[];
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=()=>{
+    const blob=new Blob(chunks,{type:mimeType.split(';')[0]});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=`plasma_screening.${ext}`;a.click();
+    btn.textContent='↓ Video';btn.disabled=false;
+  };
+  rec.start();let fr=0;
+  (function loop(){
+    if(fr>=200||!running){rec.stop();return;}
+    cc.fillStyle='#030b14';cc.fillRect(0,0,comp.width,comp.height);
+    cc.drawImage(cYuk,0,0);cc.drawImage(cCol,W+gap,0);
+    cc.fillStyle='rgba(0,200,240,.5)';cc.font='11px monospace';
+    cc.fillText('YUKAWA',6,H+13);
+    cc.fillStyle='rgba(159,122,234,.5)';
+    cc.fillText('EXPLICIT COULOMB',W+gap+6,H+13);
+    cc.drawImage(rYukC,0,H+gap+18);cc.drawImage(rColC,W+gap,H+gap+18);
+    fr++;requestAnimationFrame(loop);
+  })();
+});
+</script>
+</body>
+</html>
